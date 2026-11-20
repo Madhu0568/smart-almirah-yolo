@@ -56,7 +56,7 @@ Windows PowerShell:
 
 ~~~powershell
 python -m venv .venv
-.\\.venv\\Scripts\\Activate.ps1
+.\.venv\Scripts\Activate.ps1
 ~~~
 
 macOS/Linux:
@@ -171,8 +171,8 @@ curl -X POST http://127.0.0.1:5001/api/camera/stop
 ### Change settings
 
 ~~~bash
-curl -X PUT http://127.0.0.1:5001/api/config \\
-  -H "Content-Type: application/json" \\
+curl -X PUT http://127.0.0.1:5001/api/config \
+  -H "Content-Type: application/json" \
   -d '{"confidence_threshold": 0.70, "voice_enabled": true}'
 ~~~
 

@@ -1,4 +1,5 @@
 import colorsys
+from contextlib import contextmanager
 import os
 import sqlite3
 import subprocess
@@ -43,10 +44,18 @@ def database_path():
     return path if path.is_absolute() else BASE_DIR / path
 
 
+@contextmanager
 def get_db():
     connection = sqlite3.connect(str(database_path()), timeout=10)
     connection.row_factory = sqlite3.Row
-    return connection
+    try:
+        yield connection
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
 
 
 def init_db():
