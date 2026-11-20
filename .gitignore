@@ -13,3 +13,8 @@ htmlcov/
 instance/
 *.pt
 runs/
+
+# Training data and generated model artifacts
+datasets/
+data/clothing.yaml
+benchmark-results.json

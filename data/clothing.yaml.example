@@ -1,0 +1,17 @@
+# Copy this file to data/clothing.yaml and edit the dataset path and class names.
+# This is a template only. It does not contain images, labels, or trained weights.
+path: C:/path/to/clothing-dataset
+train: images/train
+val: images/val
+test: images/test
+
+# Replace these sample classes so they exactly match your labelled dataset.
+names:
+  0: shirt
+  1: trousers
+  2: dress
+  3: jacket
+  4: skirt
+  5: shorts
+  6: sweater
+  7: coat

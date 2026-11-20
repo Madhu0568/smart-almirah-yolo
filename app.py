@@ -18,6 +18,7 @@ app.config.update(
     MODEL_PATH=os.getenv("MODEL_PATH", "best.pt"),
     DATABASE_PATH=os.getenv("DATABASE_PATH", "instance/smart_almirah.db"),
     CONFIDENCE_THRESHOLD=float(os.getenv("CONFIDENCE_THRESHOLD", "0.65")),
+    INFERENCE_IMAGE_SIZE=int(os.getenv("INFERENCE_IMAGE_SIZE", "640")),
     TARGET_FPS=max(1, int(os.getenv("TARGET_FPS", "15"))),
     VOICE_ENABLED=os.getenv("VOICE_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"},
 )
@@ -371,7 +372,12 @@ def run_detection():
     threshold = float(app.config["CONFIDENCE_THRESHOLD"])
     start = time.perf_counter()
     try:
-        results = loaded_model.predict(source=frame, conf=threshold, verbose=False)
+        results = loaded_model.predict(
+            source=frame,
+            conf=threshold,
+            imgsz=app.config["INFERENCE_IMAGE_SIZE"],
+            verbose=False,
+        )
     except Exception:
         app.logger.exception("YOLO inference failed")
         return jsonify({"error": "YOLO inference failed. Check the model file and input image."}), 500
@@ -608,6 +614,7 @@ def camera_feed():
 def get_config():
     return jsonify({
         "confidence_threshold": app.config["CONFIDENCE_THRESHOLD"],
+        "image_size": app.config["INFERENCE_IMAGE_SIZE"],
         "target_fps": app.config["TARGET_FPS"],
         "model": app.config["MODEL_PATH"],
         "voice_enabled": app.config["VOICE_ENABLED"],
@@ -632,6 +639,18 @@ def update_config():
             return jsonify({"error": "confidence_threshold must be between 0 and 1."}), 400
         app.config["CONFIDENCE_THRESHOLD"] = threshold
 
+    if "image_size" in data:
+        value = data["image_size"]
+        if isinstance(value, bool):
+            return jsonify({"error": "image_size must be an integer from 320 to 1280 in steps of 32."}), 400
+        try:
+            image_size = int(value)
+        except (TypeError, ValueError):
+            return jsonify({"error": "image_size must be an integer from 320 to 1280 in steps of 32."}), 400
+        if image_size < 320 or image_size > 1280 or image_size % 32 != 0:
+            return jsonify({"error": "image_size must be between 320 and 1280 and divisible by 32."}), 400
+        app.config["INFERENCE_IMAGE_SIZE"] = image_size
+
     if "voice_enabled" in data:
         if not isinstance(data["voice_enabled"], bool):
             return jsonify({"error": "voice_enabled must be true or false."}), 400
@@ -643,6 +662,7 @@ def update_config():
 def get_config_data():
     return {
         "confidence_threshold": app.config["CONFIDENCE_THRESHOLD"],
+        "image_size": app.config["INFERENCE_IMAGE_SIZE"],
         "target_fps": app.config["TARGET_FPS"],
         "model": app.config["MODEL_PATH"],
         "voice_enabled": app.config["VOICE_ENABLED"],
