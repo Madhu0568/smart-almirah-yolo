@@ -63,11 +63,17 @@ class SmartAlmirahAPITests(unittest.TestCase):
     def test_config_accepts_valid_values(self):
         response = self.client.put(
             "/api/config",
-            json={"confidence_threshold": 0.75, "voice_enabled": False},
+            json={"confidence_threshold": 0.75, "image_size": 768, "voice_enabled": False},
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.get_json()["config"]["confidence_threshold"], 0.75)
-        self.assertFalse(response.get_json()["config"]["voice_enabled"])
+        config = response.get_json()["config"]
+        self.assertEqual(config["confidence_threshold"], 0.75)
+        self.assertEqual(config["image_size"], 768)
+        self.assertFalse(config["voice_enabled"])
+
+    def test_config_rejects_invalid_image_size(self):
+        response = self.client.put("/api/config", json={"image_size": 750})
+        self.assertEqual(response.status_code, 400)
 
     def test_config_rejects_out_of_range_threshold(self):
         response = self.client.put(

@@ -100,6 +100,8 @@
       <div class="settings">
         <label for="confidence">Confidence threshold: <strong id="confidence-value">0.65</strong></label>
         <input id="confidence" type="range" min="0.10" max="0.95" step="0.05" value="0.65">
+        <label for="image-size">Inference image size: <strong id="image-size-value">640</strong></label>
+        <input id="image-size" type="range" min="320" max="1280" step="32" value="640">
         <label><input id="voice-enabled" type="checkbox"> Windows voice feedback</label>
       </div>
       <div class="message" id="settings-message" role="status"></div>
@@ -371,6 +373,8 @@
       const data = await api("/api/config");
       byId("confidence").value = data.confidence_threshold;
       byId("confidence-value").textContent = Number(data.confidence_threshold).toFixed(2);
+      byId("image-size").value = data.image_size || 640;
+      byId("image-size-value").textContent = String(data.image_size || 640);
       byId("voice-enabled").checked = data.voice_enabled;
     } catch (error) {
       setMessage("settings-message", error.message);
@@ -384,6 +388,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           confidence_threshold: Number(byId("confidence").value),
+          image_size: Number(byId("image-size").value),
           voice_enabled: byId("voice-enabled").checked
         })
       });
@@ -394,6 +399,10 @@
   }
 
   byId("confidence").addEventListener("change", saveConfig);
+  byId("image-size").addEventListener("input", (event) => {
+    byId("image-size-value").textContent = event.target.value;
+  });
+  byId("image-size").addEventListener("change", saveConfig);
   byId("voice-enabled").addEventListener("change", saveConfig);
 
   async function initialize() {
