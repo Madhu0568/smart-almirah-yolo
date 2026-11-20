@@ -323,13 +323,16 @@ def health():
 @app.route("/api/detect", methods=["POST"])
 def run_detection():
     """Detect items in an uploaded image or the latest live-camera frame."""
-    import cv2
-    import numpy as np
-
     uploaded = request.files.get("image")
     camera_source = False
 
     if uploaded is not None and uploaded.filename:
+        try:
+            import cv2
+            import numpy as np
+        except ImportError:
+            return jsonify({"error": "Install OpenCV and NumPy to process uploaded images."}), 503
+
         file_bytes = uploaded.read()
         if not file_bytes:
             return jsonify({"error": "The uploaded image is empty."}), 400
