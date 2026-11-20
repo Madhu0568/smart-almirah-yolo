@@ -1,139 +1,411 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Almirah - Object Detection System</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a2e; color: #eee; padding: 20px; }
-        h1 { text-align: center; margin-bottom: 5px; color: #e94560; }
-        .subtitle { text-align: center; color: #888; margin-bottom: 20px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
-        .stat { background: #16213e; border-radius: 10px; padding: 18px; text-align: center; border: 1px solid #0f3460; }
-        .stat .val { font-size: 2em; font-weight: bold; color: #e94560; }
-        .stat .lbl { color: #888; font-size: 0.85em; margin-top: 4px; }
-        .controls { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; flex-wrap: wrap; }
-        button { padding: 10px 22px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
-        button:hover { transform: translateY(-1px); }
-        .btn-detect { background: #e94560; color: white; }
-        .btn-camera { background: #0f3460; color: white; }
-        .btn-clear { background: #533483; color: white; }
-        .panel { background: #16213e; border-radius: 10px; padding: 20px; margin-bottom: 20px; border: 1px solid #0f3460; }
-        .panel h2 { color: #e94560; margin-bottom: 12px; font-size: 1.1em; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #0f3460; }
-        th { color: #888; }
-        .color-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
-        .detection-feed { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
-        .det-card { background: #1a1a2e; border-radius: 8px; padding: 12px; border: 1px solid #0f3460; }
-        .det-card .category { font-weight: bold; font-size: 1.1em; text-transform: capitalize; }
-        .det-card .conf { color: #e94560; font-weight: 600; }
-        .camera-indicator { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
-        .cam-on { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
-        .cam-off { background: #666; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111827">
+  <title>Smart Almirah | Clothing Inventory</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0b1220; --panel:#121d30; --panel2:#17243a; --line:#263750; --text:#edf2f8; --muted:#9aaac0; --accent:#ee5572; --green:#28c58b; --yellow:#e9b44c; }
+    * { box-sizing:border-box; }
+    body { margin:0; padding:28px; font-family:Inter,Segoe UI,Arial,sans-serif; background:var(--bg); color:var(--text); }
+    main { max-width:1200px; margin:0 auto; }
+    h1 { margin:0; font-size:clamp(1.8rem,4vw,2.5rem); letter-spacing:-.04em; }
+    h2 { margin:0 0 14px; font-size:1.05rem; }
+    p { color:var(--muted); }
+    .header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:22px; }
+    .eyebrow { color:var(--accent); font-weight:700; text-transform:uppercase; letter-spacing:.15em; font-size:.72rem; margin-bottom:7px; }
+    .status { border:1px solid var(--line); border-radius:999px; padding:8px 12px; color:var(--muted); font-size:.86rem; white-space:nowrap; }
+    .notice { border:1px solid #66532d; background:#302817; color:#f4d99a; padding:13px 16px; border-radius:12px; margin-bottom:18px; line-height:1.45; }
+    .notice.ok { border-color:#235f4b; background:#102c25; color:#9ce5c8; }
+    .stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:18px; }
+    .stat,.panel { background:var(--panel); border:1px solid var(--line); border-radius:15px; }
+    .stat { padding:17px; }
+    .stat .value { font-size:1.8rem; font-weight:750; margin-top:7px; }
+    .stat .label { color:var(--muted); font-size:.83rem; }
+    .layout { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .panel { padding:19px; margin-bottom:16px; min-width:0; }
+    .panel p { line-height:1.5; margin:0 0 12px; font-size:.9rem; }
+    .controls { display:flex; gap:9px; flex-wrap:wrap; align-items:center; }
+    button,.file-label { border:0; border-radius:9px; padding:10px 14px; color:white; background:#344762; font-weight:650; cursor:pointer; font-size:.88rem; }
+    button.primary { background:var(--accent); }
+    button.green { background:#177b5a; }
+    button.danger { background:#8c3447; }
+    button:disabled { opacity:.45; cursor:not-allowed; }
+    input[type=file] { max-width:100%; color:var(--muted); }
+    input[type=range] { width:min(260px,100%); accent-color:var(--accent); }
+    input[type=checkbox] { accent-color:var(--accent); }
+    .preview,.camera-preview { display:block; width:100%; max-height:350px; object-fit:contain; background:#080d16; border:1px solid var(--line); border-radius:10px; margin-top:13px; }
+    .camera-preview[hidden],.preview[hidden] { display:none; }
+    .empty { color:var(--muted); font-size:.9rem; padding:14px 0; }
+    .detection-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; }
+    .detection-card { background:var(--panel2); border:1px solid var(--line); padding:12px; border-radius:10px; }
+    .detection-card strong { display:block; text-transform:capitalize; margin-bottom:6px; }
+    .detection-card span { display:block; color:var(--muted); font-size:.83rem; line-height:1.5; }
+    .color-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:7px; border:1px solid #ffffff40; vertical-align:middle; }
+    .table-wrap { overflow-x:auto; }
+    table { border-collapse:collapse; width:100%; min-width:620px; font-size:.87rem; }
+    th,td { text-align:left; padding:11px 9px; border-bottom:1px solid var(--line); }
+    th { color:var(--muted); font-weight:600; }
+    td { color:#dfe7f1; }
+    td button { padding:6px 9px; font-size:.78rem; }
+    .settings { display:flex; gap:18px; flex-wrap:wrap; align-items:center; color:var(--muted); font-size:.9rem; }
+    .message { min-height:22px; margin-top:10px; color:#ffc2cc; font-size:.88rem; }
+    .full { grid-column:1/-1; }
+    @media(max-width:800px) { body { padding:16px; } .stats { grid-template-columns:repeat(2,minmax(0,1fr)); } .layout { grid-template-columns:1fr; } .header { align-items:flex-start; flex-direction:column; } }
+  </style>
 </head>
 <body>
-    <h1>Smart Almirah</h1>
-    <p class="subtitle">AI-Powered Wardrobe Object Detection System (YOLOv8)</p>
+<main>
+  <header class="header">
+    <div><div class="eyebrow">Computer vision · Wardrobe management</div><h1>Smart Almirah</h1><p>Detect clothing, estimate color and maintain a saved inventory.</p></div>
+    <div class="status" id="service-status">Checking service…</div>
+  </header>
 
-    <div class="grid">
-        <div class="stat"><div class="val" id="total-items">0</div><div class="lbl">Unique Items</div></div>
-        <div class="stat"><div class="val" id="total-count">0</div><div class="lbl">Total Count</div></div>
-        <div class="stat"><div class="val" id="avg-conf">0%</div><div class="lbl">Avg Confidence</div></div>
-        <div class="stat"><div class="val" id="avg-inference">0ms</div><div class="lbl">Avg Inference</div></div>
-        <div class="stat"><div class="val" id="camera-status"><span class="camera-indicator cam-off"></span>OFF</div><div class="lbl">Camera</div></div>
-    </div>
+  <div class="notice" id="model-notice">Checking model weights…</div>
 
-    <div class="controls">
-        <button class="btn-detect" onclick="runDetection()">Run Detection</button>
-        <button class="btn-detect" onclick="runMultiple(5)">Run 5x Detection</button>
-        <button class="btn-camera" onclick="toggleCamera()">Toggle Camera</button>
-        <button class="btn-clear" onclick="location.reload()">Refresh</button>
+  <section class="stats" aria-label="Project statistics">
+    <div class="stat"><div class="label">Unique wardrobe entries</div><div class="value" id="unique-items">0</div></div>
+    <div class="stat"><div class="label">Detection events</div><div class="value" id="total-detections">0</div></div>
+    <div class="stat"><div class="label">Average confidence</div><div class="value" id="average-confidence">0%</div></div>
+    <div class="stat"><div class="label">Average inference</div><div class="value" id="average-inference">0 ms</div></div>
+  </section>
+
+  <section class="layout">
+    <div class="panel">
+      <h2>Detect from an image</h2>
+      <p>Select a photo. The uploaded file is processed by the configured YOLO model on the server.</p>
+      <input id="image-file" type="file" accept="image/*">
+      <img id="image-preview" class="preview" alt="Selected image preview" hidden>
+      <div class="controls" style="margin-top:12px">
+        <button class="primary" id="detect-image">Detect selected image</button>
+      </div>
+      <div class="message" id="image-message" role="status"></div>
     </div>
 
     <div class="panel">
-        <h2>Latest Detections</h2>
-        <div class="detection-feed" id="detections"></div>
+      <h2>Live camera</h2>
+      <p>Start the computer's webcam, then detect the latest captured frame.</p>
+      <div class="controls">
+        <button class="green" id="start-camera">Start camera</button>
+        <button class="danger" id="stop-camera">Stop camera</button>
+        <button class="primary" id="detect-camera">Detect current frame</button>
+      </div>
+      <img id="camera-preview" class="camera-preview" alt="Live camera feed" hidden>
+      <div class="message" id="camera-message" role="status"></div>
     </div>
 
-    <div class="panel">
-        <h2>Inventory</h2>
-        <table>
-            <thead><tr><th>Item</th><th>Color</th><th>Count</th><th>Confidence</th><th>Last Seen</th></tr></thead>
-            <tbody id="inventory-table"></tbody>
-        </table>
+    <div class="panel full">
+      <h2>Detection settings</h2>
+      <div class="settings">
+        <label for="confidence">Confidence threshold: <strong id="confidence-value">0.65</strong></label>
+        <input id="confidence" type="range" min="0.10" max="0.95" step="0.05" value="0.65">
+        <label><input id="voice-enabled" type="checkbox"> Windows voice feedback</label>
+      </div>
+      <div class="message" id="settings-message" role="status"></div>
     </div>
+  </section>
 
-    <script>
-        const colorMap = {red:'#ef4444',blue:'#3b82f6',black:'#333',white:'#f0f0f0',green:'#22c55e',navy:'#1e3a5f',gray:'#9ca3af',beige:'#d4a574',brown:'#8b4513',pink:'#ec4899',yellow:'#eab308',purple:'#a855f7'};
-        let cameraOn = false;
+  <section class="panel">
+    <h2>Latest detections</h2>
+    <div class="detection-grid" id="detections"><div class="empty">No detection events yet.</div></div>
+  </section>
 
-        async function runDetection() {
-            const res = await fetch('/api/detect', {method: 'POST'});
-            const data = await res.json();
-            const div = document.getElementById('detections');
-            div.innerHTML = '';
-            for (const d of data.detections) {
-                div.innerHTML += `<div class="det-card">
-                    <div class="category"><span class="color-dot" style="background:${colorMap[d.color]||'#888'}"></span>${d.color} ${d.category}</div>
-                    <div class="conf">${(d.confidence*100).toFixed(1)}% confidence</div>
-                    <div style="color:#888;font-size:0.85em">${d.inference_time_ms}ms inference</div>
-                </div>`;
-            }
-            refreshStats();
-            refreshInventory();
-        }
+  <section class="panel">
+    <h2>Saved clothing inventory</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Category</th><th>Estimated color</th><th>Count</th><th>Best confidence</th><th>Last seen</th><th>Action</th></tr></thead>
+        <tbody id="inventory-body"><tr><td colspan="6" class="empty">No inventory items yet.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+  <p style="text-align:center;font-size:.78rem">Smart Almirah · Flask · OpenCV · YOLO · SQLite</p>
+</main>
 
-        async function runMultiple(n) {
-            for (let i = 0; i < n; i++) {
-                await runDetection();
-                await new Promise(r => setTimeout(r, 200));
-            }
-        }
+<script>
+  const colorMap = {
+    red:"#ef4444",orange:"#f97316",yellow:"#eab308",green:"#22c55e",
+    cyan:"#06b6d4",blue:"#3b82f6",navy:"#1e3a8a",purple:"#a855f7",
+    pink:"#ec4899",black:"#111827",white:"#f8fafc",gray:"#9ca3af",
+    brown:"#92400e",unknown:"#64748b"
+  };
 
-        async function refreshStats() {
-            try {
-                const res = await fetch('/api/stats');
-                const data = await res.json();
-                if (data.message) return;
-                document.getElementById('total-items').textContent = data.unique_items;
-                document.getElementById('total-count').textContent = data.total_detections;
-                document.getElementById('avg-conf').textContent = (data.average_confidence * 100).toFixed(1) + '%';
-                document.getElementById('avg-inference').textContent = data.average_inference_ms + 'ms';
-            } catch(e) {}
-        }
+  const byId = (id) => document.getElementById(id);
+  let selectedImageUrl = null;
 
-        async function refreshInventory() {
-            try {
-                const res = await fetch('/api/inventory');
-                const data = await res.json();
-                const tbody = document.getElementById('inventory-table');
-                tbody.innerHTML = '';
-                for (const item of data.items.sort((a,b) => b.count - a.count)) {
-                    tbody.innerHTML += `<tr>
-                        <td style="text-transform:capitalize">${item.category}</td>
-                        <td><span class="color-dot" style="background:${colorMap[item.color]||'#888'}"></span>${item.color}</td>
-                        <td>${item.count}</td>
-                        <td>${(item.confidence*100).toFixed(1)}%</td>
-                        <td style="color:#888;font-size:0.85em">${new Date(item.last_seen).toLocaleTimeString()}</td>
-                    </tr>`;
-                }
-            } catch(e) {}
-        }
+  async function api(url, options) {
+    const response = await fetch(url, options || {});
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "Request failed: " + response.status);
+    return payload;
+  }
 
-        async function toggleCamera() {
-            cameraOn = !cameraOn;
-            await fetch(cameraOn ? '/api/camera/start' : '/api/camera/stop', {method: 'POST'});
-            const el = document.getElementById('camera-status');
-            el.innerHTML = cameraOn
-                ? '<span class="camera-indicator cam-on"></span>ON'
-                : '<span class="camera-indicator cam-off"></span>OFF';
-        }
+  function setMessage(id, message, good) {
+    const el = byId(id);
+    el.textContent = message || "";
+    el.style.color = good ? "#9ce5c8" : "#ffc2cc";
+  }
 
-        refreshStats();
-        refreshInventory();
-    </script>
+  function addEmpty(container, message) {
+    const el = document.createElement("div");
+    el.className = "empty";
+    el.textContent = message;
+    container.appendChild(el);
+  }
+
+  function addColorDot(parent, color) {
+    const dot = document.createElement("span");
+    dot.className = "color-dot";
+    dot.style.backgroundColor = colorMap[color] || colorMap.unknown;
+    parent.appendChild(dot);
+  }
+
+  async function refreshHealth() {
+    try {
+      const data = await api("/api/health");
+      byId("service-status").textContent = "Service online";
+      const notice = byId("model-notice");
+      if (data.model_weights_found) {
+        notice.className = "notice ok";
+        notice.textContent = "Model weights found: " + data.model_path +
+          ". Confirm that these weights were trained for the clothing classes you want to detect.";
+      } else {
+        notice.className = "notice";
+        notice.textContent = "YOLO weights not found. Add your clothing-trained best.pt file to the project folder, " +
+          "or set MODEL_PATH to its location, then restart the Flask server. Detection will remain disabled until then.";
+      }
+      return data;
+    } catch (error) {
+      byId("service-status").textContent = "Service unavailable";
+      byId("model-notice").textContent = error.message;
+      return null;
+    }
+  }
+
+  async function refreshStats() {
+    try {
+      const data = await api("/api/stats");
+      byId("unique-items").textContent = data.unique_items;
+      byId("total-detections").textContent = data.total_detections;
+      byId("average-confidence").textContent = (data.average_confidence * 100).toFixed(1) + "%";
+      byId("average-inference").textContent = data.average_inference_ms.toFixed(1) + " ms";
+    } catch (error) {
+      setMessage("image-message", error.message);
+    }
+  }
+
+  async function refreshInventory() {
+    const body = byId("inventory-body");
+    try {
+      const data = await api("/api/inventory");
+      body.replaceChildren();
+      if (!data.items.length) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 6;
+        cell.className = "empty";
+        cell.textContent = "No inventory items yet.";
+        row.appendChild(cell);
+        body.appendChild(row);
+        return;
+      }
+
+      data.items.forEach((item) => {
+        const row = document.createElement("tr");
+        const category = document.createElement("td");
+        category.textContent = item.category;
+        category.style.textTransform = "capitalize";
+        const color = document.createElement("td");
+        addColorDot(color, item.color);
+        color.appendChild(document.createTextNode(item.color));
+        const count = document.createElement("td");
+        count.textContent = item.count;
+        const confidence = document.createElement("td");
+        confidence.textContent = (item.confidence * 100).toFixed(1) + "%";
+        const lastSeen = document.createElement("td");
+        lastSeen.textContent = new Date(item.last_seen).toLocaleString();
+        const action = document.createElement("td");
+        const remove = document.createElement("button");
+        remove.className = "danger";
+        remove.textContent = "Remove";
+        remove.addEventListener("click", () => removeInventoryItem(item.item_id));
+        action.appendChild(remove);
+        [category, color, count, confidence, lastSeen, action].forEach((cell) => row.appendChild(cell));
+        body.appendChild(row);
+      });
+    } catch (error) {
+      setMessage("image-message", error.message);
+    }
+  }
+
+  function renderDetections(detections) {
+    const container = byId("detections");
+    container.replaceChildren();
+    if (!detections.length) {
+      addEmpty(container, "The model did not detect any objects above the current confidence threshold.");
+      return;
+    }
+
+    detections.forEach((item) => {
+      const card = document.createElement("div");
+      card.className = "detection-card";
+      const title = document.createElement("strong");
+      addColorDot(title, item.color);
+      title.appendChild(document.createTextNode(item.color + " " + item.category));
+      const confidence = document.createElement("span");
+      confidence.textContent = (item.confidence * 100).toFixed(1) + "% confidence";
+      const time = document.createElement("span");
+      time.textContent = item.inference_time_ms.toFixed(2) + " ms frame inference";
+      const bounds = document.createElement("span");
+      const box = item.bounding_box;
+      bounds.textContent = "Box: x " + box.x + ", y " + box.y + ", " + box.width + " × " + box.height;
+      card.append(title, confidence, time, bounds);
+      container.appendChild(card);
+    });
+  }
+
+  async function performDetection(formData, messageId) {
+    setMessage(messageId, "Running detection…", true);
+    byId("detect-image").disabled = true;
+    byId("detect-camera").disabled = true;
+    try {
+      const data = await api("/api/detect", {
+        method: "POST",
+        body: formData || undefined
+      });
+      renderDetections(data.detections);
+      setMessage(messageId, "Processed " + data.count + " detection(s) from " + data.source + ".", true);
+      await Promise.all([refreshStats(), refreshInventory()]);
+    } catch (error) {
+      setMessage(messageId, error.message);
+    } finally {
+      byId("detect-image").disabled = false;
+      byId("detect-camera").disabled = false;
+    }
+  }
+
+  async function removeInventoryItem(itemId) {
+    if (!window.confirm("Remove this item from the saved inventory? Detection history will be retained.")) return;
+    try {
+      await api("/api/inventory/" + encodeURIComponent(itemId), { method: "DELETE" });
+      await Promise.all([refreshInventory(), refreshStats()]);
+    } catch (error) {
+      setMessage("image-message", error.message);
+    }
+  }
+
+  byId("image-file").addEventListener("change", (event) => {
+    const file = event.target.files && event.target.files[0];
+    const preview = byId("image-preview");
+    if (selectedImageUrl) URL.revokeObjectURL(selectedImageUrl);
+    selectedImageUrl = null;
+    if (!file) {
+      preview.hidden = true;
+      return;
+    }
+    selectedImageUrl = URL.createObjectURL(file);
+    preview.src = selectedImageUrl;
+    preview.hidden = false;
+    setMessage("image-message", "");
+  });
+
+  byId("detect-image").addEventListener("click", () => {
+    const file = byId("image-file").files[0];
+    if (!file) {
+      setMessage("image-message", "Choose an image first.");
+      return;
+    }
+    const formData = new FormData();
+    formData.append("image", file);
+    performDetection(formData, "image-message");
+  });
+
+  byId("start-camera").addEventListener("click", async () => {
+    try {
+      const data = await api("/api/camera/start", { method: "POST" });
+      byId("camera-preview").src = data.feed_url + "?t=" + Date.now();
+      byId("camera-preview").hidden = false;
+      setMessage("camera-message", data.message, true);
+      refreshCameraStatus();
+    } catch (error) {
+      setMessage("camera-message", error.message);
+    }
+  });
+
+  byId("stop-camera").addEventListener("click", async () => {
+    try {
+      const data = await api("/api/camera/stop", { method: "POST" });
+      byId("camera-preview").hidden = true;
+      byId("camera-preview").removeAttribute("src");
+      setMessage("camera-message", data.message, true);
+      refreshCameraStatus();
+    } catch (error) {
+      setMessage("camera-message", error.message);
+    }
+  });
+
+  byId("detect-camera").addEventListener("click", () => performDetection(undefined, "camera-message"));
+
+  async function refreshCameraStatus() {
+    try {
+      const data = await api("/api/camera/status");
+      if (data.active && byId("camera-preview").hidden) {
+        byId("camera-preview").src = data.feed_url + "?t=" + Date.now();
+        byId("camera-preview").hidden = false;
+      }
+      if (!data.active && !byId("camera-preview").hidden) {
+        byId("camera-preview").hidden = true;
+      }
+    } catch (error) {
+      setMessage("camera-message", error.message);
+    }
+  }
+
+  byId("confidence").addEventListener("input", (event) => {
+    byId("confidence-value").textContent = Number(event.target.value).toFixed(2);
+  });
+
+  async function loadConfig() {
+    try {
+      const data = await api("/api/config");
+      byId("confidence").value = data.confidence_threshold;
+      byId("confidence-value").textContent = Number(data.confidence_threshold).toFixed(2);
+      byId("voice-enabled").checked = data.voice_enabled;
+    } catch (error) {
+      setMessage("settings-message", error.message);
+    }
+  }
+
+  async function saveConfig() {
+    try {
+      await api("/api/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          confidence_threshold: Number(byId("confidence").value),
+          voice_enabled: byId("voice-enabled").checked
+        })
+      });
+      setMessage("settings-message", "Settings saved.", true);
+    } catch (error) {
+      setMessage("settings-message", error.message);
+    }
+  }
+
+  byId("confidence").addEventListener("change", saveConfig);
+  byId("voice-enabled").addEventListener("change", saveConfig);
+
+  async function initialize() {
+    await Promise.all([refreshHealth(), refreshStats(), refreshInventory(), loadConfig(), refreshCameraStatus()]);
+  }
+
+  initialize();
+  window.setInterval(() => {
+    refreshStats();
+    refreshInventory();
+    refreshCameraStatus();
+  }, 10000);
+</script>
 </body>
 </html>
