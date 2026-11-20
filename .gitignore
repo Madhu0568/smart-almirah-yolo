@@ -7,3 +7,9 @@ build/
 .env
 venv/
 .venv/
+.pytest_cache/
+.coverage
+htmlcov/
+instance/
+*.pt
+runs/

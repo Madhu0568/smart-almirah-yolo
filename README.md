@@ -1,115 +1,198 @@
-# AI-Enabled Smart Almirah — Object Detection System (YOLOv8)
+# AI-Enabled Smart Almirah
 
-> This project demonstrates backend system design concepts including APIs, data processing, and asynchronous workflows.
+A Flask-based computer-vision application for detecting clothing with a YOLO model, estimating object colors, and maintaining a persistent wardrobe inventory in SQLite.
 
-## Overview
+## What it does
 
-Developed an object detection system using YOLOv8 to identify clothing items from images and a camera feed. Built a REST API for uploading images and retrieving detected items. Integrated OpenCV for image processing and real-time inference. Inventory is updated automatically on each detection event.
+- Runs YOLO inference on an uploaded image or the latest frame from a live webcam.
+- Returns each detected class, confidence score, estimated color, bounding box, and measured frame inference time.
+- Aggregates detections into a wardrobe inventory grouped by category and estimated color.
+- Persists inventory and detection history in SQLite so records survive application restarts.
+- Provides camera start/stop controls and an MJPEG camera preview.
+- Includes a browser dashboard for image upload, live-camera detection, inventory management, and confidence settings.
+- Supports optional Windows voice announcements through PowerShell and System.Speech.
 
-The main technical challenge was inference speed — the initial pipeline ran at ~120ms per frame. Got it down to ~68ms through frame batching and model quantization (a 43% reduction).
+## Important: use clothing-trained weights
 
-## Features
+The application expects a YOLO weights file named **best.pt** in the project root by default. The weights must be trained or fine-tuned to recognize the clothing classes you want to detect.
 
-- **Real-time object detection** using YOLOv8 pretrained model on clothing items (shirts, jeans, jackets, dresses, etc.)
-- **Confidence filtering** — only items detected above a configurable threshold (default 0.65) are recorded
-- **Inventory API** — automatically creates/updates item records on detection; supports query by category and color
-- **Camera controller** — start/stop feed, track uptime across continuous operation
-- **Optimized inference pipeline**: frame batching (batch size 4) reduced average latency from ~120ms to ~68ms
-- Performance stats endpoint: average confidence, inference time, total detections
-- Flask control server managing camera feeds, detection triggers, and database writes
+The generic Ultralytics YOLOv8n COCO weights are not a clothing detector for classes such as shirts, jeans, jackets, or dresses. Do not rename generic weights to best.pt and assume they will recognize clothing. Use your own apparel-trained weights or set MODEL_PATH to a compatible model file.
 
-## Tech Stack
+Large model files are intentionally excluded from Git. Keep the trained weights on your local machine, or use an approved model-artifact download process.
 
-Python · YOLOv8 · OpenCV · Flask · REST API
+## Project structure
 
-## How to Run
+~~~text
+smart-almirah-yolo/
+├── app.py
+├── requirements.txt
+├── README.md
+├── sample_output.txt
+├── instance/                 # Created automatically; SQLite database
+├── best.pt                   # Your clothing-trained weights; not committed
+├── static/
+│   └── index.html
+├── tests/
+│   └── test_app.py
+└── .github/
+    └── workflows/
+        └── tests.yml
+~~~
 
-```bash
+## Setup
+
+Python 3.10 or newer is recommended.
+
+1. Clone the repository and enter the project directory.
+
+~~~bash
+git clone https://github.com/Madhu0568/smart-almirah-yolo.git
+cd smart-almirah-yolo
+~~~
+
+2. Create and activate a virtual environment.
+
+Windows PowerShell:
+
+~~~powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+~~~
+
+macOS/Linux:
+
+~~~bash
+python3 -m venv .venv
+source .venv/bin/activate
+~~~
+
+3. Install the packages.
+
+~~~bash
+python -m pip install --upgrade pip
 pip install -r requirements.txt
+~~~
+
+4. Put your clothing-trained YOLO weights in the project folder as best.pt, or configure MODEL_PATH to the path of your weights.
+
+Windows PowerShell:
+
+~~~powershell
+$env:MODEL_PATH = "best.pt"
+~~~
+
+macOS/Linux:
+
+~~~bash
+export MODEL_PATH="best.pt"
+~~~
+
+5. Start the application.
+
+~~~bash
 python app.py
-```
+~~~
 
-Opens at `http://localhost:5001`. For actual YOLOv8 inference, install:
-```bash
-pip install ultralytics opencv-python
-```
+Open http://127.0.0.1:5001 in your browser. The SQLite database is created automatically at instance/smart_almirah.db by default.
 
-## API
+The dashboard and non-model API endpoints can start without weights, but detection endpoints return HTTP 503 until a valid model file is available.
+
+## Configuration
+
+The following environment variables are supported:
+
+| Variable | Default | Description |
+|---|---|---|
+| MODEL_PATH | best.pt | Path to clothing-trained YOLO weights |
+| DATABASE_PATH | instance/smart_almirah.db | SQLite database path |
+| CONFIDENCE_THRESHOLD | 0.65 | Minimum detection confidence (0 to 1) |
+| CAMERA_INDEX | 0 | Default OpenCV camera index |
+| TARGET_FPS | 15 | Target frame-read/display rate |
+| VOICE_ENABLED | true | Enable Windows voice announcements |
+| HOST | 127.0.0.1 | Flask bind address |
+| PORT | 5001 | Flask port |
+| FLASK_DEBUG | false | Enable Flask debug mode |
+
+Color is estimated from the median pixel color inside each detected bounding box. It is a lightweight heuristic, not a separately trained color-classification model; lighting, shadows, and mixed-color garments can affect the estimate.
+
+Windows voice feedback uses PowerShell with .NET System.Speech. On non-Windows systems the application continues without voice announcements.
+
+## API reference
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/detect` | Run detection on current frame |
-| GET | `/api/inventory` | List all detected items (filter: `?category=`, `?color=`) |
-| GET | `/api/inventory/summary` | Items grouped by category and color |
-| DELETE | `/api/inventory/<id>` | Remove an item |
-| POST | `/api/camera/start` | Start camera feed |
-| POST | `/api/camera/stop` | Stop camera feed |
-| GET | `/api/camera/status` | Camera state and uptime |
-| GET | `/api/config` | Detection config (threshold, batch size, FPS) |
-| PUT | `/api/config` | Update detection settings |
-| GET | `/api/stats` | Performance metrics |
-| GET | `/api/detection-log` | Full detection history |
+|---|---|---|
+| GET | / | Dashboard |
+| GET | /api/health | Service, model-file, database, and voice status |
+| POST | /api/detect | Detect in multipart image field image, or use the latest frame when the camera is running |
+| GET | /api/inventory | List saved items; optional category and color query parameters |
+| GET | /api/inventory/summary | Counts grouped by category and color |
+| DELETE | /api/inventory/{item_id} | Remove one inventory entry |
+| POST | /api/camera/start | Open the configured webcam; optional JSON camera_index |
+| POST | /api/camera/stop | Stop webcam capture |
+| GET | /api/camera/status | Camera state and uptime |
+| GET | /api/camera/feed | MJPEG camera stream |
+| GET | /api/config | Read confidence and voice settings |
+| PUT | /api/config | Update confidence_threshold and/or voice_enabled |
+| GET | /api/stats | Detection totals and measured averages |
+| GET | /api/detection-log | Recent detection events; optional limit (maximum 500) |
 
-## Example Detection Response
+### Detect an uploaded image
 
-```bash
-curl -X POST http://localhost:5001/api/detect
-```
+~~~bash
+curl -X POST -F "image=@sample.jpg" http://127.0.0.1:5001/api/detect
+~~~
 
-```json
-{
-  "detections": [
-    {
-      "item_id": "a3f2b1c4",
-      "category": "jacket",
-      "color": "navy",
-      "confidence": 0.91,
-      "bounding_box": {"x": 120, "y": 85, "width": 180, "height": 260},
-      "inference_time_ms": 67.4,
-      "detected_at": "2024-11-14T10:23:41"
-    },
-    {
-      "item_id": "d7e8f902",
-      "category": "jeans",
-      "color": "blue",
-      "confidence": 0.88,
-      "bounding_box": {"x": 310, "y": 190, "width": 140, "height": 310},
-      "inference_time_ms": 68.1,
-      "detected_at": "2024-11-14T10:23:41"
-    }
-  ],
-  "count": 2,
-  "inference_time_ms": 68.7,
-  "model": "yolov8n"
-}
-```
+Windows PowerShell:
 
-## Performance Optimization
+~~~powershell
+curl.exe -X POST -F "image=@sample.jpg" http://127.0.0.1:5001/api/detect
+~~~
 
-| Stage | Latency |
-|-------|---------|
-| Baseline (single frame, full model) | ~120ms |
-| After frame batching (batch size 4) | ~85ms |
-| After INT8 quantization | ~68ms |
-| **Total reduction** | **43%** |
+### Detect a live camera frame
 
-## Architecture
+Start the webcam:
 
-```
-Camera Feed
-    │
-    ▼
-YOLOv8 Inference Engine (batched, quantized)
-    │
-    ▼
-Detection Parser (confidence filter > 0.65)
-    │
-    ▼
-Inventory API ──→ Item records (category, color, count, timestamps)
-    │
-Flask Control Server ──→ camera start/stop, trigger detection, serve API
-```
+~~~bash
+curl -X POST http://127.0.0.1:5001/api/camera/start
+~~~
 
-## Output
+Then request detection on the latest captured frame:
 
-See [sample_output.txt](sample_output.txt) for real API request/response examples including detection results with bounding boxes, confidence scores, inventory updates, and performance stats.
+~~~bash
+curl -X POST http://127.0.0.1:5001/api/detect
+~~~
+
+Stop the webcam when finished:
+
+~~~bash
+curl -X POST http://127.0.0.1:5001/api/camera/stop
+~~~
+
+### Change settings
+
+~~~bash
+curl -X PUT http://127.0.0.1:5001/api/config \
+  -H "Content-Type: application/json" \
+  -d '{"confidence_threshold": 0.70, "voice_enabled": true}'
+~~~
+
+## Testing
+
+The API and SQLite tests use Python's built-in unittest framework:
+
+~~~bash
+python -m unittest discover -s tests -v
+~~~
+
+The GitHub Actions workflow runs these tests on pushes and pull requests. The automated tests do not require a webcam or model weights. To validate actual clothing recognition, run the application locally with your own trained weights and test images.
+
+## Performance reporting
+
+Inference time is measured around the actual YOLO predict call for each frame. Results depend on the model, input resolution, hardware, and execution provider. No fixed latency or speedup is claimed in this repository; benchmark your own setup before reporting performance figures.
+
+## Limitations
+
+- Correct clothing recognition depends on the class labels and quality of the supplied trained weights.
+- Color estimation is approximate.
+- Webcam support depends on local device availability and operating-system camera permissions.
+- The inventory count records detection events. Repeatedly detecting the same garment can increase the count; it is not a unique physical-garment tracking system.

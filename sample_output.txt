@@ -1,60 +1,45 @@
-Smart Almirah — Sample Detection Output
+Smart Almirah — Illustrative API response
 ========================================
+
+This is an example of the response structure only. Values, labels, confidence,
+bounding boxes, colors, and inference times are produced by your model and
+hardware at runtime. This is not a measured benchmark or a recorded model run.
 
 Request:
   POST /api/detect
-  (triggered on camera frame)
+  Content-Type: multipart/form-data
+  image = sample.jpg
 
-Response:
+Illustrative response:
 {
   "detections": [
     {
-      "item_id": "a3f2b1c4",
-      "category": "jacket",
-      "color": "navy",
+      "item_id": "generated-detection-id",
+      "category": "class-name-from-your-trained-model",
+      "color": "estimated-color",
       "confidence": 0.91,
-      "bounding_box": { "x": 120, "y": 85, "width": 180, "height": 260 },
-      "inference_time_ms": 67.4,
-      "detected_at": "2024-11-14T10:23:41"
-    },
-    {
-      "item_id": "d7e8f902",
-      "category": "jeans",
-      "color": "blue",
-      "confidence": 0.87,
-      "bounding_box": { "x": 310, "y": 190, "width": 140, "height": 310 },
-      "inference_time_ms": 68.1,
-      "detected_at": "2024-11-14T10:23:41"
-    },
-    {
-      "item_id": "c5a9d301",
-      "category": "t-shirt",
-      "color": "white",
-      "confidence": 0.83,
-      "bounding_box": { "x": 200, "y": 130, "width": 160, "height": 210 },
-      "inference_time_ms": 69.2,
-      "detected_at": "2024-11-14T10:23:41"
+      "bounding_box": {
+        "x": 120,
+        "y": 85,
+        "width": 180,
+        "height": 260
+      },
+      "inference_time_ms": 0.0,
+      "detected_at": "runtime-UTC-timestamp"
     }
   ],
-  "count": 3,
-  "inference_time_ms": 68.7,
-  "model": "yolov8n"
+  "count": 1,
+  "inference_time_ms": 0.0,
+  "model": "best.pt",
+  "source": "upload"
 }
 
-Detected Items:
-  - jacket (navy)
-  - jeans (blue)
-  - t-shirt (white)
+The application stores each detection event in the detection_log table and
+updates the inventory aggregate for the matching category and estimated color.
 
-Inventory Updated:
-  navy_jacket  → count: 1
-  blue_jeans   → count: 1
-  white_t-shirt → count: 1
-
-GET /api/inventory/summary
-{
-  "total_unique_items": 3,
-  "total_count": 3,
-  "by_category": { "jacket": 1, "jeans": 1, "t-shirt": 1 },
-  "by_color":    { "navy": 1, "blue": 1, "white": 1 }
-}
+Useful follow-up requests:
+  GET    /api/inventory
+  GET    /api/inventory/summary
+  GET    /api/detection-log
+  GET    /api/stats
+  DELETE /api/inventory/<item_id>
