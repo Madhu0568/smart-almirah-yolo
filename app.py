@@ -277,19 +277,32 @@ def camera_reader(capture):
 
 
 def stop_camera_resources():
+    """Stop the reader and release the device immediately.
+
+    Releasing the capture before joining is important because a blocking
+    VideoCapture.read() may otherwise keep the camera device open.
+    """
     global _camera_capture, _camera_thread, _camera_started_at, _latest_frame
+
     _camera_running.clear()
 
     with _camera_lock:
+        capture = _camera_capture
         thread = _camera_thread
-
-    if thread and thread.is_alive() and thread is not threading.current_thread():
-        thread.join(timeout=3)
-
-    with _camera_lock:
         _camera_capture = None
         _camera_thread = None
         _camera_started_at = None
+
+    if capture is not None:
+        try:
+            capture.release()
+        except Exception:
+            app.logger.exception("Could not release the camera device cleanly")
+
+    if thread and thread.is_alive() and thread is not threading.current_thread():
+        thread.join(timeout=5)
+        if thread.is_alive():
+            app.logger.warning("Camera reader thread did not stop within 5 seconds")
 
     with _frame_lock:
         _latest_frame = None

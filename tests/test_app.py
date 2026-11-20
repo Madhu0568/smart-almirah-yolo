@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import app as app_module
 from app import app, init_db, record_detections
 
 
@@ -36,6 +37,28 @@ class SmartAlmirahAPITests(unittest.TestCase):
         response = self.client.post("/api/detect")
         self.assertEqual(response.status_code, 400)
         self.assertIn("Choose an image", response.get_json()["error"])
+
+    def test_stop_camera_releases_capture_device(self):
+        class FakeCapture:
+            def __init__(self):
+                self.released = False
+
+            def release(self):
+                self.released = True
+
+        fake_capture = FakeCapture()
+        app_module._camera_capture = fake_capture
+        app_module._camera_thread = None
+        app_module._camera_started_at = "2026-11-21T00:00:00+00:00"
+        app_module._camera_running.set()
+
+        app_module.stop_camera_resources()
+
+        self.assertTrue(fake_capture.released)
+        self.assertFalse(app_module._camera_running.is_set())
+        self.assertIsNone(app_module._camera_capture)
+        self.assertIsNone(app_module._camera_thread)
+        self.assertIsNone(app_module._camera_started_at)
 
     def test_config_accepts_valid_values(self):
         response = self.client.put(
