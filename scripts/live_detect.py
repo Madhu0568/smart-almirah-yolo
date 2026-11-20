@@ -71,7 +71,7 @@ def main() -> int:
                 last_inference_ms = (time.perf_counter() - started) * 1000
                 last_annotated = prediction.plot()
 
-            display = last_annotated if last_annotated is not None else frame
+            display = last_annotated.copy() if last_annotated is not None else frame.copy()
             cv2.putText(
                 display,
                 f"Frame: {frame_index} | Skip: {args.frame_skip} | Inference: {last_inference_ms:.1f} ms",

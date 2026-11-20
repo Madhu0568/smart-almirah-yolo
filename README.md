@@ -1,4 +1,4 @@
-# AI-Enabled Smart Almirah — Object Detection & Inventory Prototype
+# AI-Enabled Smart Almirah — Object Detection, Training & Inventory
 
 A Flask and OpenCV computer-vision prototype that runs YOLO object detection on uploaded images or webcam frames, estimates object color, and records detection events in a persistent SQLite inventory.
 
@@ -15,6 +15,9 @@ The application pipeline is implemented. The exact object categories it can reco
 - **Color estimate:** Uses a lightweight median-pixel/HSV heuristic over the detected crop. It is not a separately trained color classifier.
 - **Dashboard:** Supports image uploads, camera controls, confidence settings, detection results, and inventory removal.
 - **Optional voice feedback:** Uses Windows PowerShell and .NET System.Speech when enabled on Windows.
+- **Clothing-model training:** Includes a command-line YOLOv8 training workflow for a user-provided labelled dataset.
+- **Frame-skipped live inference:** Includes a local webcam/video runner with configurable image size, confidence, and frame skip.
+- **Inference benchmarking:** Exports latency and throughput measurements to JSON for a selected test-image set.
 
 ## Important: model weights determine the classes
 
@@ -45,15 +48,22 @@ Large .pt files are excluded from Git through .gitignore. Keep model weights loc
 ~~~text
 smart-almirah-yolo/
 ├── app.py
+├── train.py
 ├── requirements.txt
 ├── README.md
 ├── sample_output.txt
 ├── instance/                 # Created automatically; SQLite database
 ├── best.pt                   # Optional clothing-trained weights; not committed
+├── data/
+│   └── clothing.yaml.example
+├── scripts/
+│   ├── live_detect.py
+│   └── benchmark.py
 ├── static/
 │   └── index.html
 ├── tests/
-│   └── test_app.py
+│   ├── test_app.py
+│   └── test_training.py
 └── .github/
     └── workflows/
         └── tests.yml
@@ -124,6 +134,7 @@ The dashboard and non-model API endpoints can start without weights. Detection e
 | MODEL_PATH | best.pt | Path to the YOLO weights file |
 | DATABASE_PATH | instance/smart_almirah.db | SQLite database path |
 | CONFIDENCE_THRESHOLD | 0.65 | Minimum detection confidence (0 to 1) |
+| INFERENCE_IMAGE_SIZE | 640 | YOLO inference image size (320–1280, divisible by 32) |
 | CAMERA_INDEX | 0 | Default OpenCV camera index |
 | TARGET_FPS | 15 | Target camera frame-read and preview rate |
 | VOICE_ENABLED | true | Enable Windows voice announcements |
@@ -216,3 +227,64 @@ The webcam capture and MJPEG routes are implemented. Camera availability, comple
 - Color estimation is approximate.
 - Repeatedly detecting the same physical garment increments the inventory event count. The application does not yet track unique garments across frames.
 - Detection accuracy and inference speed depend on the selected model, input resolution, hardware, lighting, and camera quality. Benchmark results should be reported only after repeatable measurements.
+
+## Clothing model training
+
+The repository includes train.py and data/clothing.yaml.example. The dataset itself is not included. Prepare a YOLO-format dataset with matching images and labels:
+
+~~~text
+clothing-dataset/
+├── images/
+│   ├── train/
+│   └── val/
+└── labels/
+    ├── train/
+    └── val/
+~~~
+
+Each label file contains rows in the format:
+
+~~~text
+class_id x_center y_center width height
+~~~
+
+Copy the template and edit its dataset path and class names so they match the annotation class IDs:
+
+~~~powershell
+Copy-Item .\data\clothing.yaml.example .\data\clothing.yaml
+~~~
+
+Run training:
+
+~~~powershell
+python train.py --data data/clothing.yaml --model yolov8n.pt --epochs 100 --imgsz 640 --batch 8 --workers 2 --output best.pt
+~~~
+
+After training, select the resulting model:
+
+~~~powershell
+$env:MODEL_PATH = "best.pt"
+python app.py
+~~~
+
+Training uses the Ultralytics YOLO API. Dataset quality, class balance, labels, hardware, and training parameters influence the result. No model accuracy is claimed by this repository until you evaluate the trained weights against a separate held-out test set.
+
+## Live inference with frame skipping
+
+The Flask dashboard detects one selected image or the latest camera frame when requested. For a continuous webcam/video inference demonstration with frame skipping, run:
+
+~~~powershell
+python scripts/live_detect.py --weights best.pt --source 0 --imgsz 640 --conf 0.30 --frame-skip 3
+~~~
+
+The script processes every third frame with the example setting. Press Q in the preview window to close the capture device. You can also pass a video file path as the source.
+
+## Inference benchmarking
+
+Benchmark a held-out folder of images:
+
+~~~powershell
+python scripts/benchmark.py --weights best.pt --source path/to/test/images --imgsz 640 --conf 0.25 --warmup 2 --limit 100 --output benchmark-results.json
+~~~
+
+The JSON report contains mean, median, p95, minimum, and maximum inference latency, along with throughput and run settings. Model-load time is excluded. Run benchmarks on the target computer and compare the same test set and settings when evaluating model changes.
